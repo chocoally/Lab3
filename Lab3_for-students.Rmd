@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r bioc, eval = FALSE}
 # install packages from bioconductor
 source("https://bioconductor.org/biocLite.R") 
-biocLite("sva")
+#biocLite("sva")
 biocLite("bladderbatch") # for the example data
 # etc.
 ```
@@ -48,7 +48,10 @@ edata <- exprs(bladderEset)
 ## Clustering Code
 
 ```{r clustering}
-# your turn!
+dist_mat = dist(t(edata)) # clusters by distance between rows of data in a matrix (want samples to be rows)
+clustering = hclust(dist_mat, method="complete")
+plot(clustering, labels=pheno$batch) # see there is batch effect
+
 ```
 
 
@@ -59,14 +62,14 @@ edata <- exprs(bladderEset)
 ## More Clustering Plots: Solution
 
 ```{r, clustering2}
-# your turn!
+plot(clustering, labels=pheno$cancer)
 ```
 
 ## Model Matrix
 
 - Need to specify the model for LIMMA and a null model for ComBat
 - If you had other variables you wanted to adjust for, you would put
-them in the model for ComBat, too.
+them in the model for ComBat, too. ComBat removes batch effect.
 
 ```{r model-matrix}
 model1 <- model.matrix(~hasCancer, data = pheno)
@@ -79,6 +82,7 @@ model0 <- model.matrix(~1, data = pheno)
 
 ```{r combat}
 combat_edata <- ComBat(dat = edata, batch = pheno$batch, mod = model0)
+# model matrix removes variables you want to remove the effect of, here it is just "intercept = 1"" variable
 ```
 
 ## Check Clustering Again
@@ -89,7 +93,11 @@ effect?
 ## Check Clustering Again: Solution
 
 ```{r combat-clusters}
-# your turn!
+dist_mat = dist(t(combat_edata)) # clusters by distance between rows of data in a matrix (want samples to be rows)
+clustering2 = hclust(dist_mat, method="complete")
+plot(clustering2, labels=pheno$batch)
+# After batch removal you want to draw a plot to make sure the batch effect is removed
+# After batch removal, the diseased will cluster together and non-diseased will cluster together
 ```
 
 ## LIMMA
@@ -103,8 +111,11 @@ effect?
 - Wrote the row names to a file so we can run DAVID.
 
 ```{r limma}
-# your turn!
-# save the result in a variable called tophits
+fit <- lmFit(combat_edata, model1)
+fit <- eBayes(fit)
+tophits = topTable(fit, number=Inf, coef="hasCancer", p.value=0.05, lfc=log2(2))
+dim(tophits) # 280 genes
+
 ```
 
 ## DAVID Prep
